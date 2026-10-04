@@ -1,0 +1,23 @@
+{
+  "name": "deadline-aware-lesson-images",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/course_delivery.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/lesson_image_handoff.test.ts"
+  },
+  "dependencies": {
+    "openai": "^5.20.0",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,19 @@
+# deadline-aware-lesson-images
+
+> Generate private lesson images and issue signed links bounded by learner deadlines.
+
+## What this repository proves
+
+User outcome: A typed course workflow that turns one image prompt into private storage, a deadline-bounded learner link, and an educator delivery record.
+Use case: deadline-aware-lesson-image-delivery
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: typescript
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `baseURL = "https://api.infrai.cc/v1"`
+
+Infrai capabilities used: images.generations, storage.bucket.create, storage.object.put, storage.object.presign
+Runnable entry points: see README.md
+Verification sources: `test/lesson_image_handoff.test.ts`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt

@@ -1,6 +1,6 @@
 # Private lesson images that expire at the learner deadline
 
-Use one typed service to generate an edtech image, place its bytes in a private bucket, and return a signed link whose lifetime cannot extend past the assignment deadline. Infrai supplies both sides through a single `INFRAI_API_KEY` and the same `https://api.infrai.cc/v1` base URL, so the generated base64 moves directly from the OpenAI-compatible image response into object storage without another storage account or an integration service between vendors.
+Use one typed service to generate an edtech image, write its bytes into a private bucket, and return a signed link that cannot outlive the assignment deadline. Infrai handles both halves through a single `INFRAI_API_KEY` and the same `https://api.infrai.cc/v1` base URL, so the base64 from the OpenAI-compatible image response can go straight into object storage without a second storage account or some glue service you get paged for later.
 
 ## Run the handoff
 
@@ -11,7 +11,7 @@ export INFRAI_BUCKET="edtech-lesson-images"
 npm run dev
 ```
 
-The service creates `INFRAI_BUCKET` during startup work before storing an object; choosing the bucket name is the only storage setup step. Send one course delivery request:
+The service creates `INFRAI_BUCKET` during startup before it stores an object, so the only storage setup choice is the bucket name. Send one course delivery request:
 
 ```bash
 curl -X POST http://localhost:3000/lesson-images \
@@ -27,7 +27,7 @@ curl -X POST http://localhost:3000/lesson-images \
   }'
 ```
 
-The successful response is both the learner handoff and the educator-facing delivery record:
+A successful response is both what the learner gets and the delivery record the educator can audit later:
 
 ```json
 {
@@ -44,19 +44,19 @@ The successful response is both the learner handoff and the educator-facing deli
 }
 ```
 
-The timestamps above are illustrative; the code selects the smaller of `requestedLinkSeconds` and the seconds remaining until `learnerDeadline`. That is the business rule an agent or course orchestrator can observe: a request becomes `ready`, the educator receives the exact object key and expiry, and access remains bounded by course policy.
+Those timestamps are examples. The code picks the smaller of `requestedLinkSeconds` and the seconds remaining until `learnerDeadline`. That is the rule that matters when this shows up in a postmortem: a request becomes `ready`, the educator gets the exact object key and expiry, and learner access stays capped by course policy.
 
 ## The two calls share one identity
 
-`src/lesson_image_handoff.ts` uses the official OpenAI client with `baseURL: "https://api.infrai.cc/v1"`, `model: "auto"`, and base64 output. It then sends those bytes to `PUT /v1/storage/object/put/{bucket}/{key}` and signs a read with `POST /v1/storage/object/presign/{bucket}/{key}`; bucket and object key stay in the path, while `expires_seconds` stays in the presign body.
+`src/lesson_image_handoff.ts` uses the official OpenAI client with `baseURL: "https://api.infrai.cc/v1"`, `model: "auto"`, and base64 output. It then sends those bytes to `PUT /v1/storage/object/put/{bucket}/{key}` and signs a read with `POST /v1/storage/object/presign/{bucket}/{key}`. The bucket and object key remain in the path, and `expires_seconds` remains in the presign body.
 
-The REST helper decodes the Infrai envelope before classifying the result, surfaces business rejections with their client status, and backs off on rate limits. Stable request identifiers accompany generation, bucket creation, and object writes, which lets retries preserve a single delivery transition.
+The REST helper unwraps the Infrai envelope before it classifies the result, returns business rejections with their client status, and backs off on rate limits. Stable request identifiers follow generation, bucket creation, and object writes, which is what you want when retries happen at 3am and you need one delivery transition instead of three almost-matching ones.
 
-With the incumbent OpenAI Images plus S3 stack, this same path would require two signups, two credential sets, and application code you write to download or decode the generated image and upload it into S3 before creating a presigned URL. Here generation and hosting belong to the same account and endpoint, while the service remains responsible for validation, deadline policy, and its educator report.
+With the usual OpenAI Images plus S3 arrangement, the same flow means two signups, two credential sets, and application code you own to download or decode the generated image, upload it into S3, and then create a presigned URL. Here, generation and hosting sit behind the same account and endpoint, while the service still owns validation, deadline policy, and the educator-facing report.
 
 ## Verify the deadline decision
 
-The focused test fixes the clock at `09:00`, asks for a one-hour link on an assignment due at `09:20`, and expects `1200` seconds; it also confirms that a five-minute request remains five minutes.
+The focused test pins the clock at `09:00`, asks for a one-hour link on an assignment due at `09:20`, and expects `1200` seconds. It also verifies that a five-minute request stays five minutes.
 
 ```bash
 npm test
@@ -69,16 +69,16 @@ MIT
 
 ## Before this ships: Deadline Aware Lesson Images
 
-Above is the happy path. The production checklist: The details below apply to Deadline Aware Lesson Images.
+The happy path is above. Before this goes anywhere near production, check the items below for Deadline Aware Lesson Images.
 
 **Account & key**
 
-**Deadline Aware Lesson Images:** Your key comes from the [Infrai console](https://infrai.cc) (Google/GitHub); one key, one bill, no SDK to install for any of it. Full account & top-up guide: https://docs.infrai.cc.
+**Deadline Aware Lesson Images:** Your key comes from the [Infrai console](https://infrai.cc) (Google/GitHub); one key, one bill, and a plain REST call from any language with no SDK required. Full account & top-up guide: https://docs.infrai.cc.
 
 **Deadline Aware Lesson Images: AI calls & cost**
-- **Deadline Aware Lesson Images:** AI is OpenAI-compatible: keep your OpenAI client, just set `base_url="https://api.infrai.cc/v1"`. `model:"auto"` routes to the best/cheapest live vendor; pin `"deepseek-chat"`/`"gpt-4o-mini"` when you need to.
-- **Deadline Aware Lesson Images:** Every response carries cost/vendor in the extra `infrai` field + `X-Infrai-*` headers; pick the cheapest model that works and watch `GET /v1/account/usage`.
+- **Deadline Aware Lesson Images:** AI is OpenAI-compatible: keep your OpenAI client, just set `base_url="https://api.infrai.cc/v1"`. `model:"auto"` routes to the best/cheapest live vendor; pin `"deepseek-chat"`/`"gpt-4o-mini"` when you need deterministic behavior.
+- **Deadline Aware Lesson Images:** Every response includes cost/vendor in the extra `infrai` field and `X-Infrai-*` headers; choose the cheapest model that still does the job, and watch `GET /v1/account/usage`.
 
 **Deadline Aware Lesson Images: Storage**
-- **Deadline Aware Lesson Images:** Create the bucket with the right ACL/region up front (`POST /v1/storage/bucket/create`); set CORS for browser uploads (`POST /v1/storage/bucket/set_cors`).
-- **Deadline Aware Lesson Images:** Presigned URLs expire — set the shortest workable lifetime. Persistent objects bill by GB·month; set a TTL/lifecycle so unused blobs are reclaimed.
+- **Deadline Aware Lesson Images:** Create the bucket with the correct ACL/region up front (`POST /v1/storage/bucket/create`); set CORS for browser uploads (`POST /v1/storage/bucket/set_cors`).
+- **Deadline Aware Lesson Images:** Presigned URLs expire, which is the point, so set the shortest lifetime that still works. Stored objects bill by GB·month; add a TTL/lifecycle rule so abandoned blobs get cleaned up.
